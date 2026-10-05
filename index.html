@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resume Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--mute:#5d6470;--line:#dfe3e8;--acc:#1f5eff;--accink:#fff;--danger:#c0392b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121418;--card:#1b1e24;--ink:#eceef2;--mute:#9aa1ad;--line:#2d323b;--acc:#5b8cff;--accink:#0b1020;--danger:#ff7b6b}}
+:root[data-theme="dark"]{--bg:#121418;--card:#1b1e24;--ink:#eceef2;--mute:#9aa1ad;--line:#2d323b;--acc:#5b8cff;--accink:#0b1020;--danger:#ff7b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
+main{max-width:720px;margin:0 auto;padding:16px 14px 150px}
+h1{font-size:22px;margin:8px 0 2px}
+.sub{color:var(--mute);font-size:14px;margin:0 0 16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
+input,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:0}
+textarea{min-height:90px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.entry{border:1px dashed var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+button{font:inherit;font-size:15px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;cursor:pointer}
+button.link{color:var(--danger);border:0;background:none;padding:6px 0;font-size:13px}
+button.add{width:100%}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px))}
+.bar .in{max-width:720px;margin:0 auto}
+button.pdf{width:100%;background:var(--acc);color:var(--accink);border:0;font-weight:600;font-size:16px;padding:13px}
+#msg{font-size:13px;text-align:center;min-height:18px;margin-bottom:6px;color:var(--mute)}
+#msg.err{color:var(--danger)}
+
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1}
+.tabs button.on{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+.wrap{display:block}
+body.v-prev #formCol{display:none}
+body:not(.v-prev) #prevCol{display:none}
+.paper{background:#fff;color:#16181d;border:1px solid var(--line);border-radius:6px;padding:22px 20px;font-family:Helvetica,Arial,sans-serif;font-size:11.5px;line-height:1.4;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.paper h3{font-size:19px;margin:0;text-align:center}
+.paper .hl{text-align:center;color:#5d6470;font-size:11.5px;margin-top:2px}
+.paper .ct{text-align:center;font-size:10.5px;margin:3px 0 4px}
+.paper h4{font-size:11px;text-transform:uppercase;border-bottom:1.3px solid #16181d;margin:12px 0 4px;padding-bottom:2px}
+.paper .e{margin-top:6px}
+.paper .t{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.paper .t span+span{font-weight:400;white-space:nowrap}
+.paper .s{font-style:italic;color:#5d6470}
+.paper ul{margin:2px 0 0;padding-left:16px}
+.paper p{margin:0}
+@media (min-width:980px){
+  main{max-width:1180px}
+  .tabs{display:none}
+  .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+  body .wrap #formCol,body .wrap #prevCol{display:block}
+  #prevCol{position:sticky;top:12px;max-height:calc(100vh - 100px);overflow:auto}
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Resume Builder</h1>
+  <p class="sub">Edit the fields, check the preview, then tap Download PDF. Empty fields are skipped.</p>
+  <div class="tabs"><button id="tEdit" class="on" onclick="setView(false)">Edit</button><button id="tPrev" onclick="setView(true)">Preview</button></div>
+  <div class="wrap"><div id="formCol">
+
+  <section id="lock">
+    <h2>Unlock saved profile</h2>
+    <label>Access code</label>
+    <input id="code" type="password" autocomplete="off" placeholder="Enter code to fill in saved details">
+    <button class="add" style="margin-top:10px" onclick="unlock()">Unlock &amp; fill</button>
+    <div id="lockMsg" style="font-size:13px;margin-top:8px;color:var(--mute)"></div>
+  </section>
+
+  <section>
+    <h2>Personal</h2>
+    <label>Full name</label><input id="name">
+    <label>Headline</label><input id="headline">
+    <div class="row">
+      <div><label>Phone</label><input id="phone" inputmode="tel"></div>
+      <div><label>Email</label><input id="email" inputmode="email"></div>
+    </div>
+    <label>Location</label><input id="loc">
+  </section>
+
+  <section>
+    <h2>Summary</h2>
+    <textarea id="summary"></textarea>
+  </section>
+
+  <section>
+    <h2>Work Experience</h2>
+    <div id="exp"></div>
+    <button class="add" onclick="addExp()">+ Add experience</button>
+  </section>
+
+  <section>
+    <h2>Internship</h2>
+    <div id="intern"></div>
+    <button class="add" onclick="addIntern()">+ Add internship</button>
+  </section>
+
+  <section>
+    <h2>Education</h2>
+    <div id="edu"></div>
+    <button class="add" onclick="addEdu()">+ Add education</button>
+  </section>
+
+  <section>
+    <h2>Skills &amp; More</h2>
+    <label>Technical skills (comma separated)</label>
+    <textarea id="tech" style="min-height:60px"></textarea>
+    <label>Software</label><input id="soft">
+    <label>Soft skills</label><input id="soft2">
+    <label>Languages</label><input id="langs">
+    <label>Hobbies</label><input id="hobbies">
+  </section>
+</div><div id="prevCol"><div class="paper" id="paper"></div></div></div>
+</main>
+
+<div class="bar"><div class="in">
+  <div id="msg"></div>
+  <button class="pdf" id="pdfBtn" onclick="exportPDF()">Download PDF</button>
+  <div style="text-align:center;margin-top:6px"><button class="link" style="color:var(--mute)" onclick="resetAll()">Reset to original</button></div>
+</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s||'').replace(/"/g,'&quot;');
+
+function rm(btn){ btn.closest('.entry').remove(); }
+function entryHtml(d, kind){
+  return `<div class="entry" data-kind="${kind}">
+    <label>Job title / role</label><input data-f="role" value="${esc(d.role)}" placeholder="${esc(d.rolePh||'')}">
+    <label>Company</label><input data-f="org" value="${esc(d.org)}">
+    <div class="row">
+      <div><label>Start</label><input data-f="start" value="${esc(d.start)}" placeholder="${esc(d.startPh||'e.g. Jul 2025')}"></div>
+      <div><label>End</label><input data-f="end" value="${esc(d.end)}" placeholder="${esc(d.endPh||'e.g. Aug 2026')}"></div>
+    </div>
+    <label>Bullet points (one per line)</label>
+    <textarea data-f="bullets">${(d.bullets||'').replace(/</g,'&lt;')}</textarea>
+    <button class="link" onclick="rm(this)">Remove</button>
+  </div>`;
+}
+function addExp(d){ $('exp').insertAdjacentHTML('beforeend', entryHtml(d||{},'exp')); }
+function addIntern(d){ $('intern').insertAdjacentHTML('beforeend', entryHtml(d||{},'intern')); }
+function addEdu(d){
+  d=d||{};
+  $('edu').insertAdjacentHTML('beforeend', `<div class="entry">
+    <label>Qualification</label><input data-f="qual" value="${esc(d.qual)}">
+    <label>Institution</label><input data-f="inst" value="${esc(d.inst)}">
+    <div class="row">
+      <div><label>Year</label><input data-f="year" value="${esc(d.year)}" inputmode="numeric"></div>
+      <div><label>Percentage / CGPA</label><input data-f="score" value="${esc(d.score)}"></div>
+    </div>
+    <button class="link" onclick="rm(this)">Remove</button>
+  </div>`);
+}
+
+addExp({rolePh:'Job title'});
+addIntern({startPh:'Start (optional)',endPh:'e.g. 4 months'});
+addEdu({});
+
+function entries(id){
+  return [...$(id).querySelectorAll('.entry')].map(e=>{
+    const o={}; e.querySelectorAll('[data-f]').forEach(i=>o[i.dataset.f]=i.value.trim()); return o;
+  });
+}
+function setMsg(t,err){ const m=$('msg'); m.textContent=t; m.className=err?'err':''; }
+
+function buildPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt',format:'a4'});
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight();
+  const M=44, CW=W-2*M; let y=M;
+  const ink=[22,24,29], mute=[93,100,112];
+  const need=h=>{ if(y+h>H-M){ doc.addPage(); y=M; } };
+  const text=(t,x,opts={})=>{ doc.text(t,x,y,opts); };
+  const para=(t,size,style,indent,color)=>{
+    doc.setFont('helvetica',style||'normal'); doc.setFontSize(size); doc.setTextColor(...(color||ink));
+    const lines=doc.splitTextToSize(t,CW-(indent||0));
+    lines.forEach(l=>{ need(size*1.4); y+=size*1.2; text(l,M+(indent||0)); });
+  };
+  const heading=t=>{
+    need(34); y+=12; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...ink);
+    y+=11; text(t.toUpperCase(),M); y+=4; doc.setDrawColor(...ink); doc.setLineWidth(.7); doc.line(M,y,W-M,y); y+=2;
+  };
+  const bullets=txt=>{
+    (txt||'').split('\n').map(s=>s.trim()).filter(Boolean).forEach(b=>{
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...ink);
+      const lines=doc.splitTextToSize(b,CW-16);
+      lines.forEach((l,i)=>{ need(14); y+=13; if(i===0) text('\u2022',M+4); text(l,M+16); });
+    });
+  };
+  const entry=(left,sub,right,bl)=>{
+    need(40); y+=8;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...ink);
+    const rw = right? doc.getTextWidth(right)+10 : 0;
+    const lines=doc.splitTextToSize(left,CW-rw);
+    lines.forEach((l,i)=>{ y+=13; text(l,M); if(i===0&&right){ doc.setFont('helvetica','normal'); text(right,W-M,{align:'right'}); doc.setFont('helvetica','bold'); } });
+    if(sub){ doc.setFont('helvetica','italic'); doc.setFontSize(10); doc.setTextColor(...mute); const sl=doc.splitTextToSize(sub,CW); sl.forEach(l=>{ y+=12.5; text(l,M); }); }
+    y+=1; bullets(bl);
+  };
+
+  // Header
+  doc.setFont('helvetica','bold'); doc.setFontSize(22); doc.setTextColor(...ink);
+  y+=18; text($('name').value.trim(),W/2,{align:'center'});
+  const hl=$('headline').value.trim();
+  if(hl){ doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(...mute); y+=17; text(hl,W/2,{align:'center'}); }
+  const contact=[$('loc').value,$('phone').value,$('email').value].map(s=>s.trim()).filter(Boolean).join('  |  ');
+  if(contact){ doc.setFontSize(10); doc.setTextColor(...ink); y+=15; text(contact,W/2,{align:'center'}); }
+
+  const sum=$('summary').value.trim();
+  if(sum){ heading('Professional Summary'); y+=2; para(sum,10,'normal',0); }
+
+  const dates=(s,e)=>[s,e].filter(Boolean).join(' - ');
+  const ex=entries('exp').filter(e=>e.role||e.org);
+  if(ex.length){ heading('Work Experience'); ex.forEach(e=>entry(e.role||e.org, e.role?e.org:'', dates(e.start,e.end), e.bullets)); }
+  const it=entries('intern').filter(e=>e.role||e.org);
+  if(it.length){ heading('Internship'); it.forEach(e=>entry(e.org||e.role, e.org?e.role:'', dates(e.start,e.end), e.bullets)); }
+  const ed=entries('edu').filter(e=>e.qual||e.inst);
+  if(ed.length){
+    heading('Education');
+    ed.forEach(e=>{
+      const right=[e.year,e.score].filter(Boolean).join('  |  ');
+      entry(e.qual||e.inst, e.qual?e.inst:'', right, '');
+    });
+  }
+  const sk=[['Technical',$('tech').value],['Software',$('soft').value],['Soft skills',$('soft2').value]].filter(r=>r[1].trim());
+  if(sk.length){
+    heading('Skills');
+    sk.forEach(r=>{
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); const lw=doc.getTextWidth(r[0]+': ');
+      doc.setFont('helvetica','normal'); const lines=doc.splitTextToSize(r[1].trim(),CW-lw);
+      lines.forEach((l,i)=>{ need(14); y+=13; if(i===0){ doc.setFont('helvetica','bold'); text(r[0]+': ',M); doc.setFont('helvetica','normal'); } text(l,M+lw); });
+    });
+  }
+  const lg=$('langs').value.trim(); if(lg){ heading('Languages'); y+=2; para(lg,10,'normal',0); }
+  const hb=$('hobbies').value.trim(); if(hb){ heading('Hobbies'); y+=2; para(hb,10,'normal',0); }
+  return doc;
+}
+
+
+function setView(p){ document.body.classList.toggle('v-prev',p); $('tEdit').classList.toggle('on',!p); $('tPrev').classList.toggle('on',p); if(p) renderPreview(); window.scrollTo(0,0); }
+const he = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const blist = t => { const a=(t||'').split('\n').map(x=>x.trim()).filter(Boolean); return a.length?'<ul>'+a.map(x=>'<li>'+he(x)+'</li>').join('')+'</ul>':''; };
+const ent = (l,sub,r,b) => `<div class="e"><div class="t"><span>${he(l)}</span><span>${he(r)}</span></div>${sub?'<div class="s">'+he(sub)+'</div>':''}${blist(b)}</div>`;
+function renderPreview(){
+  const v=id=>$(id).value.trim();
+  const dt=(a,b)=>[a,b].filter(Boolean).join(' - ');
+  let h=`<h3>${he(v('name'))}</h3>`;
+  if(v('headline')) h+=`<div class="hl">${he(v('headline'))}</div>`;
+  const c=[v('loc'),v('phone'),v('email')].filter(Boolean).join('  |  ');
+  if(c) h+=`<div class="ct">${he(c)}</div>`;
+  if(v('summary')) h+=`<h4>Professional Summary</h4><p>${he(v('summary'))}</p>`;
+  const ex=entries('exp').filter(e=>e.role||e.org);
+  if(ex.length) h+='<h4>Work Experience</h4>'+ex.map(e=>ent(e.role||e.org,e.role?e.org:'',dt(e.start,e.end),e.bullets)).join('');
+  const it=entries('intern').filter(e=>e.role||e.org);
+  if(it.length) h+='<h4>Internship</h4>'+it.map(e=>ent(e.org||e.role,e.org?e.role:'',dt(e.start,e.end),e.bullets)).join('');
+  const ed=entries('edu').filter(e=>e.qual||e.inst);
+  if(ed.length) h+='<h4>Education</h4>'+ed.map(e=>ent(e.qual||e.inst,e.qual?e.inst:'',[e.year,e.score].filter(Boolean).join('  |  '),'')).join('');
+  const sk=[['Technical',v('tech')],['Software',v('soft')],['Soft skills',v('soft2')]].filter(r=>r[1]);
+  if(sk.length) h+='<h4>Skills</h4>'+sk.map(r=>`<p><b>${r[0]}:</b> ${he(r[1])}</p>`).join('');
+  if(v('langs')) h+=`<h4>Languages</h4><p>${he(v('langs'))}</p>`;
+  if(v('hobbies')) h+=`<h4>Hobbies</h4><p>${he(v('hobbies'))}</p>`;
+  $('paper').innerHTML=h;
+}
+let _t; function schedulePreview(){ clearTimeout(_t); _t=setTimeout(()=>{ renderPreview(); saveState(); },150); }
+document.addEventListener('input',schedulePreview);
+document.addEventListener('click',e=>{ if(e.target.closest('button')) schedulePreview(); });
+
+const KEY='resume-builder-v1';
+const FIELD_IDS=['name','headline','phone','email','loc','summary','tech','soft','soft2','langs','hobbies'];
+function saveState(){
+  try{
+    const f={}; FIELD_IDS.forEach(id=>f[id]=$(id).value);
+    localStorage.setItem(KEY,JSON.stringify({f,exp:entries('exp'),intern:entries('intern'),edu:entries('edu')}));
+    const m=$('msg'); if(!m.classList.contains('err')) m.textContent='Draft saved on this device';
+  }catch(e){}
+}
+function restoreState(){
+  try{
+    const raw=localStorage.getItem(KEY); if(!raw) return;
+    const d=JSON.parse(raw); if(!d||!d.f) return;
+    FIELD_IDS.forEach(id=>{ if(d.f[id]!==undefined) $(id).value=d.f[id]; });
+    $('exp').innerHTML=''; $('intern').innerHTML=''; $('edu').innerHTML='';
+    (d.exp||[]).forEach(e=>addExp({...e,rolePh:'Your job title'}));
+    (d.intern||[]).forEach(e=>addIntern({...e,startPh:'Start (optional)',endPh:'e.g. 4 months'}));
+    (d.edu||[]).forEach(e=>addEdu(e));
+  }catch(e){}
+}
+function resetAll(){
+  if(!confirm('Reset everything to the original values? Your saved draft will be cleared.')) return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  location.reload();
+}
+const BLOB="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";
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function unlock(){
+  const m=$('lockMsg'), code=$('code').value;
+  if(!code){ m.textContent='Enter the access code.'; return; }
+  if(!(window.crypto&&crypto.subtle)){ m.textContent='Unlock is not supported in this browser view.'; return; }
+  m.textContent='Checking...';
+  try{
+    const raw=b64(BLOB), salt=raw.slice(0,16), iv=raw.slice(16,28), ct=raw.slice(28);
+    const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(code),'PBKDF2',false,['deriveKey']);
+    const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:200000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);
+    const d=JSON.parse(new TextDecoder().decode(pt));
+    FIELD_IDS.forEach(id=>{ if(d.f[id]!==undefined) $(id).value=d.f[id]; });
+    $('exp').innerHTML=''; $('intern').innerHTML=''; $('edu').innerHTML='';
+    d.exp.forEach(e=>addExp({...e,rolePh:'Your job title at EMMVEE'}));
+    d.intern.forEach(e=>addIntern({...e,startPh:'Start (optional)',endPh:'e.g. 4 months'}));
+    d.edu.forEach(e=>addEdu(e));
+    $('code').value=''; m.textContent='Unlocked. Details filled in below.';
+    renderPreview(); saveState();
+  }catch(e){ m.textContent='Wrong code. Try again.'; }
+}
+
+restoreState();
+
+renderPreview();
+
+async function exportPDF(){
+  if(!$('name').value.trim()){ setMsg('Please enter your name first.',true); return; }
+  if(!(window.jspdf&&window.jspdf.jsPDF)){ setMsg('PDF library failed to load. Check your connection and reload.',true); return; }
+  setMsg('Building PDF...');
+  try{
+    const doc=buildPDF();
+    const buf=doc.output('arraybuffer');
+    let dl=null;
+    try{ dl=await claude.use('downloads'); }catch(e){}
+    if(!dl){ setMsg('Saving files is not available in this view. Open the page in the Claude app or site.',true); return; }
+    const fname=($('name').value.trim().replace(/[^\w ]+/g,'').replace(/\s+/g,'_')||'Resume')+'_Resume.pdf';
+    await dl.save({filename:fname,data:buf});
+    setMsg('PDF ready.');
+  }catch(e){
+    if(e&&e.code==='declined') setMsg('Download cancelled.');
+    else setMsg('Could not save the PDF ('+(e&&e.code?e.code:'error')+').',true);
+  }
+}
+</script>
+</body>
+</html>
